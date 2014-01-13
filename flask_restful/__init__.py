@@ -10,6 +10,7 @@ from werkzeug.exceptions import HTTPException, MethodNotAllowed, NotFound
 from werkzeug.http import HTTP_STATUS_CODES
 from flask.ext.restful.utils import error_data, unpack
 from flask.ext.restful.representations.json import output_json
+from werkzeug.wrappers import Response as ResponseBase
 import sys
 from flask.helpers import _endpoint_from_view_func
 from types import MethodType
@@ -263,7 +264,9 @@ class Api(object):
         if not hasattr(e, 'code') and self.app.propagate_exceptions:
             exc_type, exc_value, tb = sys.exc_info()
             if exc_value is e:
-                raise
+                exc = exc_type(exc_value)
+                exc.__traceback__ = tb
+                raise exc
             else:
                 raise e
 
@@ -380,7 +383,7 @@ class Api(object):
         @wraps(resource)
         def wrapper(*args, **kwargs):
             resp = resource(*args, **kwargs)
-            if isinstance(resp, Response):  # There may be a better way to test
+            if isinstance(resp, ResponseBase):  # There may be a better way to test
                 return resp
             data, code, headers = unpack(resp)
             return self.make_response(data, code, headers=headers)
@@ -471,7 +474,7 @@ class Resource(MethodView):
 
         resp = meth(*args, **kwargs)
 
-        if isinstance(resp, Response):  # There may be a better way to test
+        if isinstance(resp, ResponseBase):  # There may be a better way to test
             return resp
 
         representations = self.representations or {}
@@ -548,3 +551,4 @@ class marshal_with(object):
             else:
                 return marshal(resp, self.fields)
         return wrapper
+
